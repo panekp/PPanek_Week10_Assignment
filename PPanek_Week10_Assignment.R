@@ -1,0 +1,103 @@
+setwd("C:\\Users\\X\\Documents\\SMU\\DoingDataScience\\Week10\\PPanek_Week10_Assignment")
+library(ggplot2) 
+library(plyr) 
+
+# Item 1: getting the data and saving as data1
+fileLocation <- "http://stat.columbia.edu/~rachel/datasets/nyt1.csv"
+data1 <- read.csv(url(fileLocation))
+head(data1)
+str(data1)
+
+# Item 2: Create a new variable ageGroup that categorizes age into following groups: 
+#< 18, 18–24, 25–34, 35–44, 45–54, 55–64 and 65+.
+data1$ageGroup[data1$Age<18]<-"<18"
+data1$ageGroup[data1$Age>=18 & data1$Age <25] <- "18–24"
+data1$ageGroup[data1$Age>=25 & data1$Age <35] <- "25–34"
+data1$ageGroup[data1$Age>=35 & data1$Age <45] <- "35–44"
+data1$ageGroup[data1$Age>=45 & data1$Age <55] <- "45-54"
+data1$ageGroup[data1$Age>=55 & data1$Age <65] <- "55-64"
+data1$ageGroup[data1$Age>=65] <- "65+"
+head(data1)
+
+# Item 3:	Use sub set of data called “ImpSub” where Impressions > 0 ) in your data set
+ImpSub<-data1[data1$Impressions>0,]
+dim(ImpSub)
+
+# Item 4:  Create a new variable called click-through-rate (CTR = click/impression)
+# Intentionally doing this only for ImpSub
+ImpSub$CTR <- ImpSub$Clicks/ImpSub$Impressions
+dim(ImpSub)
+head(ImpSub)
+
+#  Item 5:  Plot distributions of number impressions and click-through-rate (CTR = click/impression) for the age groups.
+# Using ImpSub
+Impressions <- ggplot(ImpSub, aes(x=Impressions, fill=ageGroup))+
+  labs(title="Histogram of Impressions by Age Group",subtitle= "(05/01/2012)")+
+  geom_histogram(binwidth=1)
+Impressions
+
+Clickthrough <- ggplot(ImpSub, aes(x=CTR, fill=ageGroup))+
+  labs(title="Histogram of Click-Through Rate by Age Group",subtitle= "(05/01/2012)")+
+  geom_histogram(binwidth=.025)
+Clickthrough
+
+ClickthroughGT0 <- ggplot(subset(ImpSub, CTR>0), aes(x=CTR, fill=ageGroup))+
+  labs(title="Histogram of Click-Through Rate by Age Group Where Click-Through Rate >0",subtitle= "(05/01/2012)")+
+  geom_histogram(binwidth=.025)
+ClickthroughGT0
+
+# Item 6: Define a new variable to segment users based on click -through-rate (CTR) behavior.
+#  CTR< 0.2, 0.2<=CTR <0.4, 0.4<= CTR<0.6, 0.6<=CTR<0.8, CTR>0.8
+ImpSub$CTR_Group[ImpSub$CTR<.2]<-"<.2"
+ImpSub$CTR_Group[ImpSub$CTR>=.2 & ImpSub$CTR <.4] <- "0.2<=CTR<0.4"
+ImpSub$CTR_Group[ImpSub$CTR>=.4 & ImpSub$CTR <.6] <- "0.4<=CTR<0.6"
+ImpSub$CTR_Group[ImpSub$CTR>=.6 & ImpSub$CTR <.8] <- "0.6<=CTR<0.8"
+ImpSub$CTR_Group[ImpSub$CTR>=.8] <- ">=.8"
+head(ImpSub)
+
+# Question 7 Get the total number of Male, Impressions, Clicks and Signed_In
+Males <- sum(ImpSub$Gender)
+names(Males)<-"Males"
+Q7 <- c(Males,sapply(ImpSub[c(3,4,5)],sum))
+Q7
+
+# Question 8 Get the mean of Age, Impressions, Clicks, CTR and percentage of males and signed_In
+# Perform thecalculations, create a vector from the results, then assign appropriate names.
+means <- sapply(ImpSub[c("Age", "Impressions", "Clicks", "CTR")], mean)
+pcts <- sapply(ImpSub[c("Gender", "Signed_In")], function(x){sum(x) / NROW(x)})
+Q8<-c(means, pcts)
+names(Q8)<- c("Mean_Age","Mean_Impressions","Mean_Clicks", "Mean_CTR", "Pct_Male", "PCT_Signed_In")
+Q8
+
+# Item 9  Get the means of Impressions, Clicks, CTR and percentage of males and signed_In  by AgeGroup.
+ImpSub$ageGroup<-as.factor(ImpSub$ageGroup)
+Mean_Age<-tapply(ImpSub$Age,ImpSub$ageGroup,mean)
+Mean_Impress<-tapply(ImpSub$Impressions,ImpSub$ageGroup,mean)
+Mean_Clicks<-tapply(ImpSub$Clicks,ImpSub$ageGroup,mean)
+Mean_CTR<-tapply(ImpSub$CTR,ImpSub$ageGroup,mean)
+Pct_Male<-tapply(ImpSub$Gender,ImpSub$ageGroup,function(x){sum(x) / NROW(x)})
+Pct_Signed_in<-tapply(ImpSub$Signed_In,ImpSub$ageGroup,function(x){sum(x) / NROW(x)})
+
+Q9<-data.frame(Mean_Age, Mean_Impress, Mean_Clicks, Mean_CTR, Pct_Male,Pct_Signed_in)
+names(Q9)<-c("Mean_Age","Mean_Impress","Mean_Clicks","Mean_CTR","Pct_Male","Pct_Signed_In")
+Q9
+
+# Sanity-checking the counts and sums for Signed_In since all but first group were at 100%.
+tapply(ImpSub$Signed_In,ImpSub$ageGroup,sum)
+tapply(ImpSub$Signed_In,ImpSub$ageGroup,NROW)
+sum(tapply(ImpSub$Signed_In,ImpSub$ageGroup,NROW))
+dim(ImpSub)
+
+# Item 10:  Create a table of CTRGroup vs AgeGroup counts.
+Display_Order<-c("<.2","0.2<=CTR<0.4","0.4<=CTR<0.6","0.6<=CTR<0.8",">=.8")
+ImpSub$CTR_Group<-factor(ImpSub$CTR_Group, levels = Display_Order)
+Q10<-with(ImpSub, tapply(Age, list(ageGroup,CTR_Group), NROW)) # Using age to count, choice of variable is meaningless because there are no NAs
+Q10
+
+# Item 11: Plot distributions of number impressions and click-through-rate (CTR = click/impression) for the age groups
+# Same as Item 5.
+
+# Item 12:  One more plot you think which is important to look at.
+
+ggplot(ImpSub,aes(x=Impressions, y=Clicks,fill=CTR_Group))+geom_bar(stat="identity")+labs(x="Impressions", y="Clicks",title = "Clicks by Number of Impressions and Click-Through Rate",subtitle= "(05/01/2012)",fill="Click-Through Rate")
+# Total Number of Clicks centered around those with 5 to 6 impressions. Clickthough Rates drop after five impressions, although our bin size could be affecting the visibility of the dynamic.
